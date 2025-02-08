@@ -1,7 +1,7 @@
 {
 	"id": "taskhero-rewards",
 	"name": "TaskHero Rewards",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"minAppVersion": "0.15.0",
 	"description": "Rewards you with Tracker Points in TaskHero for completing tasks in Obsidian.",
 	"author": "Ean Lombardo",
