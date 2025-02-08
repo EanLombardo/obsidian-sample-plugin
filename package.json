@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-taskhero-rewards",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description":  "Rewards you with Tracker Points in TaskHero for completing tasks in Obsidian.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

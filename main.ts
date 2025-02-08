@@ -1,67 +1,30 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
-interface MyPluginSettings {
-	mySetting: string;
+interface Settings {
+	apiKey: string;
+	trackerPointCount: number;
+	privacyMode: boolean;
+	privacyText: string;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+const DEFAULT_SETTINGS: Settings = {
+	apiKey: '',
+	trackerPointCount: 1,
+	privacyMode: true,
+	privacyText: "Task",
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class ObsidianTaskHeroRewards extends Plugin {
+	settings: Settings;
 
 	async onload() {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
+		this.app.workspace.onLayoutReady( () => {
+			if(!this.app.plugins.plugins['obsidian-tasks-plugin']) {
+				new Notice("The Obsidian Task Hero Rewards Plugin requires the obsidian-tasks-plugin. Please wait to enabled it until the tasks plugin is installed and enabled.");
 			}
 		});
 
@@ -71,11 +34,13 @@ export default class MyPlugin extends Plugin {
 		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// Using this function will automatically remove the event listener when this plugin is disabled.
 		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
+			if(evt.srcElement && evt.srcElement.classList.contains('task-list-item-checkbox') && evt.srcElement.checked) {
+				var taskText = evt.srcElement.parentElement.parentElement.querySelector('.cm-list-1').innerText;
+				this.sendTrackerPoint(taskText);
+			}
 		});
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+
 	}
 
 	onunload() {
@@ -89,28 +54,44 @@ export default class MyPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
-}
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
+	async sendTrackerPoint(taskText: string) {
+		if(!this.settings.apiKey){
+			new Notice("You must set an API key in the settings to get TaskHero rewards.")
+		}
+		if(!taskText) {
+			return;
+		}
 
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
+		var textToSend = taskText;
+		if(this.settings.privacyMode) {
+			textToSend = this.settings.privacyText;
+		}
 
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
+		const headers = new Headers();
+		headers.append("Content-Type", "application/json");
+		const requestOptions = {
+			method: "POST",
+			headers: headers,
+			body: JSON.stringify({
+				"apiKey": this.settings.apiKey,
+				"value": this.settings.trackerPointCount,
+				"description": textToSend,
+				"sourceId": "Obsdian TaskHero Rewards"
+			}),
+			redirect: "follow"
+		};
+
+		fetch("https://taskhero-functions-2.fly.dev/apiCreateTrackerPoint", requestOptions)
+		.then((response) => new Notice("Tracker Point Rewarded in TaskHero!🎉"))
+		.catch((error) =>  new Notice("Error awarding tracker point!\n" + error));
 	}
 }
 
 class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+	plugin: ObsidianTaskHeroRewards;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: ObsidianTaskHeroRewards) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -121,13 +102,48 @@ class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
+			.setName('Api Key')
+			.setDesc('Your API key, you can find this in the settings of your TaskHero app.')
 			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+				.setPlaceholder('')
+				.setValue(this.plugin.settings.apiKey)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.apiKey = value;
+					await this.plugin.saveSettings();
+				}));
+		
+		new Setting(containerEl)
+			.setName('Tracker Point Count')
+			.setDesc('How many Tracker Points to give you each time you complete a task.')
+			.addSlider(slider => slider
+				.setLimits(1,10,1)
+				.setValue(this.plugin.settings.trackerPointCount)
+				.setDynamicTooltip()
+				.onChange(async (value) => {
+					this.plugin.settings.trackerPointCount = value;
+					await this.plugin.saveSettings();
+				}));
+
+		var privacyTextWidget : Setting;
+		
+		new Setting(containerEl)
+			.setName('Privacy Mode')
+			.setDesc('When privacy mode is enabled, the text below is sent for each task. Whith Privacy mode disabled, the text of the task is sent instead.')
+			.addToggle(toggle => toggle.setValue(this.plugin.settings.privacyMode)
+			.onChange(async (value) => {
+				this.plugin.settings.privacyMode = value;
+				await this.plugin.saveSettings();
+				privacyTextWidget.setDisabled(!value);
+			}))
+
+		privacyTextWidget = new Setting(containerEl)
+			.setName('Privacy Text')
+			.setDesc('When privacy mode is enabled, this text is used for every Tracker Point.')
+			.addText(text => text
+				.setPlaceholder('')
+				.setValue(this.plugin.settings.privacyText)
+				.onChange(async (value) => {
+					this.plugin.settings.privacyText = value;
 					await this.plugin.saveSettings();
 				}));
 	}
