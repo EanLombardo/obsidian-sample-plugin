@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-taskhero-rewards",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description":  "Rewards you with Tracker Points in TaskHero for completing tasks in Obsidian.",
 	"main": "main.js",
 	"scripts": {
