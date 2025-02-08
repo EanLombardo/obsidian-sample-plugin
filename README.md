@@ -21,6 +21,10 @@ This can be disabled in the settings. When disabled, the text of the checked off
 5. In the Obsidian settings for this plugin, paste your API key.
 6. Update your privacy mode settings if you wish.
 
-## Disclaimer
+## Disclaimers
 
-TaskHero is a trademark of Whetware Inc. This plugin has no affiliation with Wehtware Inc.
+TaskHero is a trademark of Whetware Inc. This plugin, and it's developers have no affiliation with Wehtware Inc.
+
+This plugin uses the network to make requests to TaskHero servers. The only information sent is the task text, and only if that is enabled.
+A TaskHero account is required to use this plugin.
+Data sent to TaskHero is subject to their [Privacy Policy](https://www.taskheroics.com/privacy).
