@@ -1,4 +1,4 @@
-# Obsidian Sample Plugin
+# Obsidian TaskHero Rewards
 
 If you use [TaskHero](https://www.taskheroics.com/) to track your day to day tasks, but Obsidian to track your work tasks, then this plugin is for you!
 
