@@ -23,7 +23,7 @@ export default class ObsidianTaskHeroRewards extends Plugin {
 		await this.loadSettings();
 
 		this.app.workspace.onLayoutReady( () => {
-			if(!this.app.plugins.plugins['obsidian-tasks-plugin']) {
+			if(!(this.app as any).plugins.plugins['obsidian-tasks-plugin']) {
 				new Notice("The Obsidian Task Hero Rewards Plugin requires the obsidian-tasks-plugin. Please wait to enabled it until the tasks plugin is installed and enabled.");
 			}
 		});
@@ -34,8 +34,9 @@ export default class ObsidianTaskHeroRewards extends Plugin {
 		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// Using this function will automatically remove the event listener when this plugin is disabled.
 		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			if(evt.srcElement && evt.srcElement.classList.contains('task-list-item-checkbox') && evt.srcElement.checked) {
-				var taskText = evt.srcElement.parentElement.parentElement.querySelector('.cm-list-1').innerText;
+			var element = (evt.srcElement as any)
+			if(element && element.classList.contains('task-list-item-checkbox') && element.checked) {
+				var taskText = element.parentElement.parentElement.querySelector('.cm-list-1').innerText;
 				this.sendTrackerPoint(taskText);
 			}
 		});
@@ -79,7 +80,6 @@ export default class ObsidianTaskHeroRewards extends Plugin {
 				"description": textToSend,
 				"sourceId": "Obsdian TaskHero Rewards"
 			}),
-			redirect: "follow"
 		};
 
 		fetch("https://taskhero-functions-2.fly.dev/apiCreateTrackerPoint", requestOptions)
