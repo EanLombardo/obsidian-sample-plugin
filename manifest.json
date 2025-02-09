@@ -1,7 +1,7 @@
 {
 	"id": "taskhero-rewards",
 	"name": "TaskHero Rewards",
-	"version": "1.0.5",
+	"version": "1.0.6",
 	"minAppVersion": "0.15.0",
 	"description": "Rewards you with Tracker Points in TaskHero for completing tasks in your vault.",
 	"author": "Ean Lombardo",

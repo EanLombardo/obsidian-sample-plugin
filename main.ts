@@ -16,38 +16,49 @@ const DEFAULT_SETTINGS: Settings = {
 
 export default class ObsidianTaskHeroRewards extends Plugin {
 	settings: Settings;
+	hasCheckedWarnings: boolean = false;
 
 	async onload() {
 		await this.loadSettings();
 
-		this.app.workspace.onLayoutReady( () => {
-			if(!(this.app as any).plugins.plugins['obsidian-tasks-plugin']) {
-				new Notice("The Obsidian Task Hero Rewards Plugin requires the obsidian-tasks-plugin. Please wait to enabled it until the tasks plugin is installed and enabled.");
+		this.app.workspace.onLayoutReady(() => {
+			if (!this.hasCheckedWarnings) {
+				this.hasCheckedWarnings = true;
+				this.maybeWarnAboutAPIKey();
+				if (!(this.app as any).plugins.plugins['obsidian-tasks-plugin']) {
+					new Notice("The Task Hero Rewards plugin requires the obsidian-tasks-plugin. Please wait to enabled it until the tasks plugin is installed and enabled.");
+				}
 			}
 		});
 
 		this.addSettingTab(new SettingTab(this.app, this));
 
 		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			if(!(evt.target instanceof HTMLInputElement)) {
+			if (!(evt.target instanceof HTMLInputElement)) {
 				return;
 			}
-			let checkbox : HTMLInputElement = evt.target as HTMLInputElement;
-			if(checkbox.classList.contains('task-list-item-checkbox') &&checkbox) {
-				let textLine : Element | undefined | null = checkbox?.parentElement?.parentElement?.querySelector('.cm-list-1');
-				if(textLine && textLine instanceof HTMLElement) {
+			let checkbox: HTMLInputElement = evt.target as HTMLInputElement;
+			if (checkbox.classList.contains('task-list-item-checkbox') && checkbox) {
+				let textLine: Element | undefined | null = checkbox?.parentElement?.parentElement?.querySelector('.cm-list-1');
+				if (textLine && textLine instanceof HTMLElement) {
 					this.sendTrackerPoint(textLine.innerText);
 				}
 
 			}
 		});
-
-
 	}
 
-	onunload() {
-
+	// Warns the user that they need to configure an API key if they don't have one.
+	// Returns whether or not a warning was displayed.
+	maybeWarnAboutAPIKey(): boolean {
+		if (!this.settings.apiKey) {
+			new Notice("The TaskHero Rewards plugin needs to be configured with an API key. Please set one in the settings.");
+			return false;
+		}
+		return false;
 	}
+
+	onunload() {}
 
 	async loadSettings() {
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -58,19 +69,19 @@ export default class ObsidianTaskHeroRewards extends Plugin {
 	}
 
 	async sendTrackerPoint(taskText: string) {
-		if(!this.settings.apiKey){
-			new Notice("You must set an API key in the settings to get TaskHero rewards.")
+		if (this.maybeWarnAboutAPIKey()) {
 			return;
 		}
-		let textToSend : string = taskText;
-		if(this.settings.privacyMode) {
+
+		let textToSend: string = taskText;
+		if (this.settings.privacyMode) {
 			textToSend = this.settings.privacyText;
 		}
 
-		const requestOptions : RequestUrlParam = {
+		const requestOptions: RequestUrlParam = {
 			method: "POST",
 			headers: {
-				"Content-Type" :  "application/json"
+				"Content-Type": "application/json"
 			},
 			url: "https://taskhero-functions-2.fly.dev/apiCreateTrackerPoint",
 			body: JSON.stringify({
@@ -82,8 +93,8 @@ export default class ObsidianTaskHeroRewards extends Plugin {
 		};
 
 		requestUrl(requestOptions)
-		.then((response) => new Notice("Tracker Point Rewarded in TaskHero!🎉"))
-		.catch((error) =>  new Notice("Error awarding tracker point!\n" + error));
+			.then((response) => new Notice("Tracker Point Rewarded in TaskHero!🎉"))
+			.catch((error) => new Notice("Error awarding tracker point!\n" + error));
 	}
 }
 
@@ -96,7 +107,7 @@ class SettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
@@ -110,12 +121,12 @@ class SettingTab extends PluginSettingTab {
 					this.plugin.settings.apiKey = value;
 					await this.plugin.saveSettings();
 				}));
-		
+
 		new Setting(containerEl)
 			.setName('Tracker Point Count')
 			.setDesc('How many Tracker Points to give you each time you complete a task.')
 			.addSlider(slider => slider
-				.setLimits(1,10,1)
+				.setLimits(1, 10, 1)
 				.setValue(this.plugin.settings.trackerPointCount)
 				.setDynamicTooltip()
 				.onChange(async (value) => {
@@ -127,10 +138,10 @@ class SettingTab extends PluginSettingTab {
 			.setName('Privacy Mode')
 			.setDesc('When privacy mode is enabled, the text below is sent for each task. Whith Privacy mode disabled, the text of the task is sent instead.')
 			.addToggle(toggle => toggle.setValue(this.plugin.settings.privacyMode)
-			.onChange(async (value) => {
-				this.plugin.settings.privacyMode = value;
-				await this.plugin.saveSettings();
-			}))
+				.onChange(async (value) => {
+					this.plugin.settings.privacyMode = value;
+					await this.plugin.saveSettings();
+				}))
 
 		new Setting(containerEl)
 			.setName('Privacy Text')
