@@ -1,6 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-
-// Remember to rename these classes and interfaces!
+import { App, Notice, Plugin, PluginSettingTab, Setting, requestUrl, RequestUrlParam } from 'obsidian';
 
 interface Settings {
 	apiKey: string;
@@ -28,16 +26,19 @@ export default class ObsidianTaskHeroRewards extends Plugin {
 			}
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new SettingTab(this.app, this));
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
 		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			var element = (evt.srcElement as any)
-			if(element && element.classList.contains('task-list-item-checkbox') && element.checked) {
-				var taskText = element.parentElement.parentElement.querySelector('.cm-list-1').innerText;
-				this.sendTrackerPoint(taskText);
+			if(!(evt.target instanceof HTMLInputElement)) {
+				return;
+			}
+			let checkbox : HTMLInputElement = evt.target as HTMLInputElement;
+			if(checkbox.classList.contains('task-list-item-checkbox') &&checkbox) {
+				let textLine : Element | undefined | null = checkbox?.parentElement?.parentElement?.querySelector('.cm-list-1');
+				if(textLine && textLine instanceof HTMLElement) {
+					this.sendTrackerPoint(textLine.innerText);
+				}
+
 			}
 		});
 
@@ -59,21 +60,19 @@ export default class ObsidianTaskHeroRewards extends Plugin {
 	async sendTrackerPoint(taskText: string) {
 		if(!this.settings.apiKey){
 			new Notice("You must set an API key in the settings to get TaskHero rewards.")
-		}
-		if(!taskText) {
 			return;
 		}
-
-		var textToSend = taskText;
+		let textToSend : string = taskText;
 		if(this.settings.privacyMode) {
 			textToSend = this.settings.privacyText;
 		}
 
-		const headers = new Headers();
-		headers.append("Content-Type", "application/json");
-		const requestOptions = {
+		const requestOptions : RequestUrlParam = {
 			method: "POST",
-			headers: headers,
+			headers: {
+				"Content-Type" :  "application/json"
+			},
+			url: "https://taskhero-functions-2.fly.dev/apiCreateTrackerPoint",
 			body: JSON.stringify({
 				"apiKey": this.settings.apiKey,
 				"value": this.settings.trackerPointCount,
@@ -82,13 +81,13 @@ export default class ObsidianTaskHeroRewards extends Plugin {
 			}),
 		};
 
-		fetch("https://taskhero-functions-2.fly.dev/apiCreateTrackerPoint", requestOptions)
+		requestUrl(requestOptions)
 		.then((response) => new Notice("Tracker Point Rewarded in TaskHero!🎉"))
 		.catch((error) =>  new Notice("Error awarding tracker point!\n" + error));
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
+class SettingTab extends PluginSettingTab {
 	plugin: ObsidianTaskHeroRewards;
 
 	constructor(app: App, plugin: ObsidianTaskHeroRewards) {
@@ -124,8 +123,6 @@ class SampleSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 
-		var privacyTextWidget : Setting;
-		
 		new Setting(containerEl)
 			.setName('Privacy Mode')
 			.setDesc('When privacy mode is enabled, the text below is sent for each task. Whith Privacy mode disabled, the text of the task is sent instead.')
@@ -133,10 +130,9 @@ class SampleSettingTab extends PluginSettingTab {
 			.onChange(async (value) => {
 				this.plugin.settings.privacyMode = value;
 				await this.plugin.saveSettings();
-				privacyTextWidget.setDisabled(!value);
 			}))
 
-		privacyTextWidget = new Setting(containerEl)
+		new Setting(containerEl)
 			.setName('Privacy Text')
 			.setDesc('When privacy mode is enabled, this text is used for every Tracker Point.')
 			.addText(text => text
